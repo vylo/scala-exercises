@@ -1,68 +1,56 @@
 package services
 
-import models.UserModel
+import doobie.imports.Transactor
+import models.UserRepository
 import services.messages._
 
-import scala.concurrent.{Future, ExecutionContext}
+import scalaz.concurrent.Task
 
 trait UserServices {
 
-  def getUserOrCreate(request: GetUserOrCreateRequest): Future[GetUserOrCreateResponse]
+  def getUserOrCreate(request: GetUserOrCreateRequest): Task[GetUserOrCreateResponse]
 
-  def getUserByLogin(request: GetUserByLoginRequest): Future[GetUserByLoginResponse]
+  def getUserByLogin(request: GetUserByLoginRequest): Task[GetUserByLoginResponse]
 
-  def createUser(request: CreateUserRequest): Future[CreateUserResponse]
+  def createUser(request: CreateUserRequest): Task[CreateUserResponse]
 
 }
 
-class UserServiceImpl(implicit val executionContext: ExecutionContext) extends UserServices {
+object UserServices {
+  implicit def userServices(implicit userRepository: UserRepository, transactor: Transactor[Task]) : UserServices = new UserServicesImpl
+}
 
-  override def getUserOrCreate(request: GetUserOrCreateRequest): Future[GetUserOrCreateResponse] =
+class UserServicesImpl(implicit userRepository: UserRepository, transactor: Transactor[Task]) extends UserServices {
 
-    getUserByLogin(GetUserByLoginRequest(request.login))
-        .flatMap {
-      _.user
-          .map(u => Future.successful(u))
-          .getOrElse(
-            createUser(CreateUserRequest(
-              login = request.login,
-              name = request.name,
-              github_id = request.github_id,
-              picture_url = request.picture_url,
-              github_url = request.github_url,
-              email = request.email))
-                .map(_.user))
-          .map(GetUserOrCreateResponse)}
+  override def getUserOrCreate(request: GetUserOrCreateRequest): Task[GetUserOrCreateResponse] =
+    for {
+      maybeUserResponse <- getUserByLogin(GetUserByLoginRequest(request.login))
+      user <- maybeUserResponse.user match {
+        case Some(u) => Task.now(u)
+        case None => createUser(CreateUserRequest(
+          login = request.login,
+          name = request.name,
+          github_id = request.github_id,
+          picture_url = request.picture_url,
+          github_url = request.github_url,
+          email = request.email)) map (_.user)
+      }
+    } yield GetUserOrCreateResponse(user)
 
 
-  override def getUserByLogin(request: GetUserByLoginRequest): Future[GetUserByLoginResponse] = {
+  override def getUserByLogin(request: GetUserByLoginRequest): Task[GetUserByLoginResponse] =
+    transactor.trans(userRepository.getByLogin(login = request.login) map GetUserByLoginResponse)
 
-    val result = for {
-      user <- UserModel.store.getByLogin(login = request.login)
-    } yield GetUserByLoginResponse(user = user.headOption)
 
-    result recover {
-      case e =>
-        throw new Exception(s"User fetching error: ${e.getMessage}")
-    }
-  }
-
-  override def createUser(request: CreateUserRequest): Future[CreateUserResponse] = {
-
-    val result = for {
-      user <- UserModel.store.create(
+  override def createUser(request: CreateUserRequest): Task[CreateUserResponse] =
+    transactor.trans(for {
+      user <- userRepository.create(
         login = request.login,
         name = request.name,
         github_id = request.github_id,
         picture_url = request.picture_url,
         github_url = request.github_url,
         email = request.email)
-    } yield CreateUserResponse(user = user)
-
-    result recover {
-      case e =>
-        throw new Exception(s"User creation error: ${e.getMessage}")
-    }
-  }
+    } yield CreateUserResponse(user = user))
 
 }

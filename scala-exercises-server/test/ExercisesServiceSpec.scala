@@ -2,12 +2,11 @@ import models.ExerciseEvaluation
 import org.junit.runner._
 import org.specs2.mutable._
 import org.specs2.runner._
-import org.specs2.scalaz.DisjunctionMatchers
-import services.parser.ExercisesService
+import services.parser.ExerciseSourceParser
 
 
 @RunWith(classOf[JUnitRunner])
-class ExercisesServiceSpec extends Specification with DisjunctionMatchers {
+class ExercisesServiceSpec extends Specification {
 
   val expectedTestSection = "stdlib"
   val expectedTestCategory = "Extractors"
@@ -18,16 +17,16 @@ class ExercisesServiceSpec extends Specification with DisjunctionMatchers {
   "ExercisesService" should {
 
     "return at least one section via classpath discovery" in {
-      val sections = ExercisesService.sections
+      val sections = ExerciseSourceParser.sections
       sections must not be empty
       sections.find(_.title == expectedTestSection) must beSome
     }
 
     "return at least one category via classpath discovery" in {
       val foundCategories = for {
-        section <- ExercisesService.sections
+        section <- ExerciseSourceParser.sections
         categoryS <- section.categories
-        category <- ExercisesService.category(section.title, categoryS)
+        category <- ExerciseSourceParser.category(section.title, categoryS)
       } yield category
       foundCategories must not be empty
       val expectedCat = foundCategories.find(_.title == expectedTestCategory)
@@ -38,19 +37,19 @@ class ExercisesServiceSpec extends Specification with DisjunctionMatchers {
     }
 
     "evaluate a known exercise type coercing it's parameters and get a successful result" in {
-      ExercisesService.evaluate(ExerciseEvaluation(
+      ExerciseSourceParser.evaluate(ExerciseEvaluation(
         section = expectedTestSection,
         category = expectedTestCategory,
         method = expectedTestExercise,
-        args = expectedTestSuccesArgs)) must beRightDisjunction
+        args = expectedTestSuccesArgs)).isRight must beTrue
     }
 
     "evaluate a known exercise type coercing it's parameters and get a failed result" in {
-      ExercisesService.evaluate(ExerciseEvaluation(
+      ExerciseSourceParser.evaluate(ExerciseEvaluation(
         section = expectedTestSection,
         category = expectedTestCategory,
         method = expectedTestExercise,
-        args = expectedTestFailedArgs)) must beLeftDisjunction
+        args = expectedTestFailedArgs)).isLeft must beTrue
     }
 
   }

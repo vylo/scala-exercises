@@ -14,12 +14,12 @@ import scala.language.implicitConversions
 import scala.reflect.ClassTag
 import scala.reflect.runtime.{universe => ru}
 import ru._
-import scalaz._, Scalaz._
+import cats.syntax.xor._
 
 /**
  * Main entry point and service for sections, categories and exercises discovery + evaluation
  */
-object ExercisesService {
+object ExerciseSourceParser {
 
   private[this] lazy val classMap = {
     val cl = Play.maybeApplication map (_.classloader) getOrElse ClassLoader.getSystemClassLoader

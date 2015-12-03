@@ -3,9 +3,8 @@
 # ~~~~
 
 # Home page
-GET / controllers.Application.index
+GET / controllers.ApplicationController.index
 
-GET /users/all    controllers.UserController.all
 GET /exercises/sections   controllers.ExercisesController.sections
 GET /exercises/sections/:section/:category    controllers.ExercisesController.category(section : String, category: String)
 POST /exercises/sections/:section/:category/evaluate   controllers.ExercisesController.evaluate(section : String, category: String)

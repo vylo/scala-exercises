@@ -3,18 +3,24 @@ import sbt.Project.projectToRef
 
 lazy val clients = Seq(scalaExercisesClient)
 lazy val scalaV = "2.11.7"
+lazy val doobieVersion = "0.2.3"
 
 lazy val commonSettings = Seq(
   scalaVersion := scalaV,
-  wartremoverWarnings in (Compile, compile) ++= Warts.unsafe)
+  wartremoverWarnings in (Compile, compile) ++= Warts.unsafe,
+  resolvers ++= Seq(
+    "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases",
+    Resolver.sonatypeRepo("snapshots")
+  )
+)
 
 lazy val scalaExercisesServer = (project in file("scala-exercises-server"))
   .settings(commonSettings: _*)
   .settings(
     routesImport += "config.Routes._",
+    routesGenerator := InjectedRoutesGenerator,
     scalaJSProjects := clients,
     pipelineStages := Seq(scalaJSProd, gzip),
-    resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases",
     libraryDependencies ++= Seq(
       filters,
       jdbc,
@@ -22,9 +28,7 @@ lazy val scalaExercisesServer = (project in file("scala-exercises-server"))
       cache,
       ws,
       specs2 % Test,
-      "com.typesafe.slick" %% "slick" % "3.0.0-RC1",
       "org.slf4j" % "slf4j-nop" % "1.6.4",
-      "org.postgresql" % "postgresql" % "9.3-1102-jdbc41",
       "com.vmunier" %% "play-scalajs-scripts" % "0.2.1",
       "com.lihaoyi" %% "upickle" % "0.2.8",
       "org.webjars" %% "webjars-play" % "2.3.0",
@@ -34,6 +38,10 @@ lazy val scalaExercisesServer = (project in file("scala-exercises-server"))
       "com.tristanhunt" %% "knockoff" % "0.8.3",
       "org.scala-lang" % "scala-compiler" % scalaV,
       "org.clapper" %% "classutil" % "1.0.5",
+      "org.tpolecat" %% "doobie-core" % doobieVersion,
+      "org.tpolecat" %% "doobie-contrib-hikari" % doobieVersion,
+      "org.tpolecat" %% "doobie-contrib-postgresql" % doobieVersion,
+      "org.tpolecat" %% "doobie-contrib-specs2" % doobieVersion,
       "com.toddfast.typeconverter" % "typeconverter" % "1.0",
       "org.typelevel" %% "scalaz-specs2" % "0.3.0" % "test"
     )
@@ -66,7 +74,9 @@ lazy val scalaExercisesShared = (crossProject.crossType(CrossType.Pure) in file(
   .settings(
       libraryDependencies ++= Seq(
         "org.scalatest" %% "scalatest" % "2.2.4",
-        "org.scalaz" %% "scalaz-core" % "7.1.4"
+        "org.scalaz" %% "scalaz-core" % "7.1.4",
+        "org.scalaz" %% "scalaz-concurrent" % "7.1.4",
+        "org.spire-math" %% "cats" % "0.4.0-SNAPSHOT" changing()
       )
     ).
     jsConfigure(_ enablePlugins ScalaJSPlay).
