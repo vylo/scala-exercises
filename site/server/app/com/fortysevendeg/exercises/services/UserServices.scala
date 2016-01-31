@@ -32,6 +32,15 @@ trait UserServices {
   def update(user: User): Boolean
 
   def delete(user: User): Boolean
+
+  def saveProgress(
+    userId:      Int,
+    libraryName: String,
+    sectionName: String,
+    method:      String,
+    args:        String,
+    succeeded:   Boolean
+  ): Throwable Xor Unit
 }
 
 class UserServiceImpl(implicit userStore: UserStore) extends UserServices {
@@ -72,6 +81,15 @@ class UserServiceImpl(implicit userStore: UserStore) extends UserServices {
 
   def delete(user: User): Boolean =
     userStore.delete(user)
+
+  def saveProgress(
+    userId:      Int,
+    libraryName: String,
+    sectionName: String,
+    method:      String,
+    args:        String,
+    succeeded:   Boolean
+  ): Throwable Xor Unit = ???
 }
 
 object UserServices {

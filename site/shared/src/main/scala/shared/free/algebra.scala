@@ -29,7 +29,6 @@ class ExerciseOps[F[_]](implicit I: Inject[ExerciseOp, F]) {
 
   def evaluate(evaluation: ExerciseEvaluation): Free[F, Throwable Xor Unit] =
     Free.inject[ExerciseOp, F](Evaluate(evaluation))
-
 }
 
 /** Default implicit based DI factory from which instances of the ExerciseOps may be obtained
@@ -39,4 +38,3 @@ object ExerciseOps {
   implicit def instance[F[_]](implicit I: Inject[ExerciseOp, F]) = new ExerciseOps[F]
 
 }
-

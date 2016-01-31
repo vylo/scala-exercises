@@ -23,6 +23,14 @@ final case class CreateUser(
 ) extends UserOp[Throwable Xor User]
 final case class UpdateUser(user: User) extends UserOp[Boolean]
 final case class DeleteUser(user: User) extends UserOp[Boolean]
+final case class SaveProgress(
+  userId:      Int,
+  libraryName: String,
+  sectionName: String,
+  method:      String,
+  args:        String,
+  succeeded:   Boolean
+) extends UserOp[Throwable Xor Unit]
 
 /** Exposes User operations as a Free monadic algebra that may be combined with other Algebras via
   * Coproduct
@@ -42,6 +50,25 @@ class UserOps[F[_]](implicit I: Inject[UserOp, F]) {
 
   def deleteUser(user: User): Free[F, Boolean] =
     Free.inject[UserOp, F](DeleteUser(user))
+
+  def saveProgress(
+    userId:      Int,
+    libraryName: String,
+    sectionName: String,
+    method:      String,
+    args:        String,
+    succeeded:   Boolean
+  ): Free[F, Throwable Xor Unit] =
+    Free.inject[UserOp, F](
+      SaveProgress(
+        userId,
+        libraryName,
+        sectionName,
+        method,
+        args,
+        succeeded
+      )
+    )
 }
 
 /** Default implicit based DI factory from which instances of the UserOps may be obtained
@@ -51,4 +78,3 @@ object UserOps {
   implicit def instance[F[_]](implicit I: Inject[UserOp, F]): UserOps[F] = new UserOps[F]
 
 }
-
