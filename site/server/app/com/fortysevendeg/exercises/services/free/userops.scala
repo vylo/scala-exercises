@@ -14,15 +14,23 @@ sealed trait UserOp[A]
 final case class GetUsers() extends UserOp[List[User]]
 final case class GetUserByLogin(login: String) extends UserOp[Option[User]]
 final case class CreateUser(
-  login:       String,
-  name:        String,
-  github_id:   String,
-  picture_url: String,
-  github_url:  String,
-  email:       String
+  login:      String,
+  name:       String,
+  githubId:   String,
+  pictureUrl: String,
+  githubUrl:  String,
+  email:      String
 ) extends UserOp[Throwable Xor User]
-final case class UpdateUser(user: User) extends UserOp[Boolean]
-final case class DeleteUser(user: User) extends UserOp[Boolean]
+final case class UpdateUser(
+  id:         Int,
+  login:      String,
+  name:       String,
+  githubId:   String,
+  pictureUrl: String,
+  githubUrl:  String,
+  email:      String
+) extends UserOp[Boolean]
+final case class DeleteUser(id: Int) extends UserOp[Boolean]
 final case class SaveProgress(
   userId:      Int,
   libraryName: String,
@@ -42,14 +50,37 @@ class UserOps[F[_]](implicit I: Inject[UserOp, F]) {
   def getUserByLogin(login: String): Free[F, Option[User]] =
     Free.inject[UserOp, F](GetUserByLogin(login))
 
-  def createUser(login: String, name: String, github_id: String, picture_url: String, github_url: String, email: String): Free[F, Throwable Xor User] =
-    Free.inject[UserOp, F](CreateUser(login, name, github_id, picture_url, github_url, email))
+  def createUser(
+    login:      String,
+    name:       String,
+    githubId:   String,
+    pictureUrl: String,
+    githubUrl:  String,
+    email:      String
+  ): Free[F, Throwable Xor User] =
+    Free.inject[UserOp, F](CreateUser(login, name, githubId, pictureUrl, githubUrl, email))
 
-  def updateUser(user: User): Free[F, Boolean] =
-    Free.inject[UserOp, F](UpdateUser(user))
+  def updateUser(
+    id:         Int,
+    login:      String,
+    name:       String,
+    githubId:   String,
+    pictureUrl: String,
+    githubUrl:  String,
+    email:      String
+  ): Free[F, Boolean] =
+    Free.inject[UserOp, F](UpdateUser(
+      id: Int,
+      login: String,
+      name: String,
+      githubId: String,
+      pictureUrl: String,
+      githubUrl: String,
+      email: String
+    ))
 
-  def deleteUser(user: User): Free[F, Boolean] =
-    Free.inject[UserOp, F](DeleteUser(user))
+  def deleteUser(id: Int): Free[F, Boolean] =
+    Free.inject[UserOp, F](DeleteUser(id))
 
   def saveProgress(
     userId:      Int,

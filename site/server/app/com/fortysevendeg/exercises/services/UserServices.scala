@@ -1,9 +1,13 @@
 package com.fortysevendeg.exercises.services
 
-import cats.data.Xor
-import scala.concurrent.{ Future, ExecutionContext }
+import scala.language.implicitConversions
 
-import com.fortysevendeg.exercises.models.{ UserStore }
+import cats.data.Xor
+import doobie.imports._
+import scalaz._, Scalaz._
+import scalaz.concurrent.Task
+import scala.concurrent.{ Future, ExecutionContext }
+import com.fortysevendeg.exercises.models.{ UserDoobieStore, NewUser }
 import shared.User
 
 trait UserServices {
@@ -12,26 +16,34 @@ trait UserServices {
   def getUserByLogin(login: String): Option[User]
 
   def getUserOrCreate(
-    login:       String,
-    name:        String,
-    github_id:   String,
-    picture_url: String,
-    github_url:  String,
-    email:       String
+    login:      String,
+    name:       String,
+    githubId:   String,
+    pictureUrl: String,
+    githubUrl:  String,
+    email:      String
   ): Throwable Xor User
 
   def createUser(
-    login:       String,
-    name:        String,
-    github_id:   String,
-    picture_url: String,
-    github_url:  String,
-    email:       String
+    login:      String,
+    name:       String,
+    githubId:   String,
+    pictureUrl: String,
+    githubUrl:  String,
+    email:      String
   ): Throwable Xor User
 
-  def update(user: User): Boolean
+  def update(
+    id:         Int,
+    login:      String,
+    name:       String,
+    githubId:   String,
+    pictureUrl: String,
+    githubUrl:  String,
+    email:      String
+  ): Boolean
 
-  def delete(user: User): Boolean
+  def delete(id: Int): Boolean
 
   def saveProgress(
     userId:      Int,
@@ -43,44 +55,85 @@ trait UserServices {
   ): Throwable Xor Unit
 }
 
-class UserServiceImpl(implicit userStore: UserStore) extends UserServices {
+class UserServiceImpl(
+    implicit
+    transactor: Transactor[Task]
+) extends UserServices {
+
+  implicit def scalazToCats[A, B](disj: \/[A, B]): Xor[A, B] = disj match {
+    case -\/(left)  ⇒ Xor.Left(left)
+    case \/-(right) ⇒ Xor.Right(right)
+  }
+
   def all: List[User] =
-    userStore.all
+    UserDoobieStore.all transact (transactor) run
 
   def getUserByLogin(login: String): Option[User] =
-    userStore.getByLogin(login)
+    UserDoobieStore.getByLogin(login) transact (transactor) run
 
   def getUserOrCreate(
-    login:       String,
-    name:        String,
-    github_id:   String,
-    picture_url: String,
-    github_url:  String,
-    email:       String
+    login:      String,
+    name:       String,
+    githubId:   String,
+    pictureUrl: String,
+    githubUrl:  String,
+    email:      String
   ): Throwable Xor User = {
-    getUserByLogin(login) match {
-      case Some(user) ⇒ Xor.Right(user)
-      case _          ⇒ createUser(login, name, github_id, picture_url, github_url, email)
-    }
+    (for {
+      maybeUser ← UserDoobieStore.getByLogin(login)
+      theUser ← if (maybeUser.isDefined) maybeUser.point[ConnectionIO] else UserDoobieStore.create(
+        NewUser(
+          login,
+          name,
+          githubId,
+          pictureUrl,
+          githubUrl,
+          email
+        )
+      )
+    } yield theUser.get).transact(transactor).attempt.run
   }
 
   def createUser(
-    login:       String,
-    name:        String,
-    github_id:   String,
-    picture_url: String,
-    github_url:  String,
-    email:       String
-  ): Throwable Xor User = {
-    val user = User(None, login, name, github_id, picture_url, github_url, email)
-    Xor.fromOption(userStore.create(user), new Exception("Couldn't create user"))
-  }
+    login:      String,
+    name:       String,
+    githubId:   String,
+    pictureUrl: String,
+    githubUrl:  String,
+    email:      String
+  ): Throwable Xor User =
+    UserDoobieStore.create(
+      NewUser(
+        login,
+        name,
+        githubId,
+        pictureUrl,
+        githubUrl,
+        email
+      )
+    ).map(_.get).transact(transactor).attempt.run
 
-  def update(user: User): Boolean =
-    userStore.update(user).isDefined
+  def update(
+    id:         Int,
+    login:      String,
+    name:       String,
+    githubId:   String,
+    pictureUrl: String,
+    githubUrl:  String,
+    email:      String
+  ): Boolean =
+    UserDoobieStore.update(User(
+      id,
+      login,
+      name,
+      githubId,
+      pictureUrl,
+      githubUrl,
+      email
+    )).map(_.isDefined).transact(transactor).run
 
-  def delete(user: User): Boolean =
-    userStore.delete(user)
+  def delete(id: Int): Boolean =
+    UserDoobieStore.delete(id).transact(transactor).run
 
   def saveProgress(
     userId:      Int,
@@ -93,5 +146,8 @@ class UserServiceImpl(implicit userStore: UserStore) extends UserServices {
 }
 
 object UserServices {
-  implicit def instance(implicit userStore: UserStore): UserServices = new UserServiceImpl
+  implicit def instance(
+    implicit
+    transactor: Transactor[Task]
+  ): UserServices = new UserServiceImpl
 }

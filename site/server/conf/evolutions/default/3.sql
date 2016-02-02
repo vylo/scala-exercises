@@ -1,7 +1,7 @@
 # --- !Ups
 
 CREATE TABLE userProgress (
-    id integer primary key,
+    id integer primary key auto_increment,
     userId integer not null,
     libraryName varchar(255) not null,
     sectionName varchar(255) not null,
