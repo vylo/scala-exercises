@@ -14,7 +14,7 @@
     },
     {
       "preparagraph": "Case classes have an automatic hashcode method that works:",
-      "code": "case class Person(first: String, last: String)\n\nval p1 = new Person(\"Fred\", \"Jones\")\nval p2 = new Person(\"Shaggy\", \"Rogers\")\nval p3 = new Person(\"Fred\", \"Jones\")\n\n(p1.hashCode == p2.hashCode) should be(__)\n(p1.hashCode == p3.hashCode) should be(__)",
+      "code": "case class Person(first: String, last: String)\n\nval p1 = new Person(\"Fred\", \"Jones\")\nval p2 = new Person(\"Shaggy\", \"Rogers\")\nval p3 = new Person(\"Fred\", \"Jones\")\n\n(p1.hashCode == p2.hashCode) should be(__) // presuming we are lucky and no hash collision will be here\n(p1.hashCode == p3.hashCode) should be(__)",
       "solutions": [
         "false",
         "true"
